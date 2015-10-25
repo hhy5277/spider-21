@@ -1,0 +1,20 @@
+{
+  "name": "spider",
+  "version": "1.0.0",
+  "description": "Nodejs 编写的爬虫工具",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@xwartz.github.com:xwartz/spider.git"
+  },
+  "keywords": [
+    "spider",
+    "nodejs",
+    "meizi"
+  ],
+  "author": "xwartz <stddup@gmail.com> (https://github.com/xwartz/)",
+  "license": "MIT"
+}
