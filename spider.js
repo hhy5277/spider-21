@@ -37,7 +37,8 @@ let getImgs = (html) => {
 // 下载图片
 let download = (img) => {
     let src = img.attribs.src;
-    let name = src.match(/.(jpg|png)/)[0];
+    let d = (new Date).getTime();
+    let name = d + src.match(/.(jpg|png)/)[0];
 
     console.log('img: ' + count);
     request(src).pipe(fs.createWriteStream('' + dir + count++ + name));
@@ -64,7 +65,7 @@ let getHTML = (url) => {
 let pages = 113;
 
 // 每次爬的页数限制，避免被封
-let freq = 4;
+let freq = 1;
 
 let action = () => {
     let len = pages - freq;
