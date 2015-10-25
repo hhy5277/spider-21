@@ -71,6 +71,7 @@ let action = () => {
 
     if(len < 0) {
         clearInterval(timeId);
+        console.log('end');
         return;
     }
 
@@ -81,8 +82,10 @@ let action = () => {
     }
 }
 
+console.log('start...');
+
 let timeId = setInterval(() => {
     console.log('page: ' + pages);
     action();
     pages -= freq;
-}, 60 * 1000);
+}, 30 * 1000);
