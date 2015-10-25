@@ -52,7 +52,7 @@ let download = (img) => {
 
 // 获取页面
 let getHTML = (url) => {
-    let promise = new Promise(function(resolve, reject){
+    let promise = new Promise((resolve, reject) => {
         superagent.get(url)
           .end((err, res) => {
             if(!err) {
