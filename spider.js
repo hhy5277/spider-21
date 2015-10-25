@@ -3,6 +3,7 @@ let superagent = require('superagent');
 let cheerio = require('cheerio');
 let request = require('request');
 let mkdirp = require('mkdirp');
+let async = require('async');
 
 
 // 网页地址
@@ -28,10 +29,15 @@ mkdirp(dir, (err) => {
 // 获取图片
 let getImgs = (html) => {
     let $ = cheerio.load(html);
-    let imgs = [];
-    $(cl).each((index, item) => {
+
+    // 限制并发数量
+    async.mapLimit($(cl), 5, (item) => {
+        console.log(item.attribs.src)
         download(item)
     })
+    // $(cl).each((index, item) => {
+    //     download(item)
+    // })
 };
 
 // 下载图片
@@ -89,4 +95,4 @@ let timeId = setInterval(() => {
     console.log('page: ' + pages);
     action();
     pages -= freq;
-}, 30 * 1000);
+}, 10 * 1000);
