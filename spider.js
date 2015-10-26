@@ -31,13 +31,13 @@ let getImgs = (html) => {
     let $ = cheerio.load(html);
 
     // 限制并发数量
-    async.mapLimit($(cl), 5, (item) => {
-        console.log(item.attribs.src)
-        download(item)
-    })
-    // $(cl).each((index, item) => {
+    // async.mapLimit($(cl), 5, (item) => {
+    //     console.log(item.attribs.src)
     //     download(item)
     // })
+    $(cl).each((index, item) => {
+        download(item)
+    })
 };
 
 // 下载图片
@@ -75,11 +75,11 @@ let freq = 1;
 
 let action = () => {
     let len = pages - freq;
+    len = Math.max(0, len);
 
-    if(len < 0) {
+    if(len === 0) {
         clearInterval(timeId);
         console.log('end');
-        return;
     }
 
     for (let i = pages; i > len; i--) {
@@ -95,4 +95,4 @@ let timeId = setInterval(() => {
     console.log('page: ' + pages);
     action();
     pages -= freq;
-}, 10 * 1000);
+}, 50 * 1000);
