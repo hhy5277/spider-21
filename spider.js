@@ -3,25 +3,26 @@ let superagent = require('superagent');
 let cheerio = require('cheerio');
 let request = require('request');
 let mkdirp = require('mkdirp');
-let async = require('async');
+// let async = require('async');
+// let retry = require('retry');
+
+let config = require('./config').config;
 
 
-// 网页地址
-// 豆瓣
-// let url = 'http://www.dbmeinv.com/dbgroup/rank.htm?pager_offset=';
-// wanimal
-let url = 'http://wanimal1983.tumblr.com/page/';
+
+// page url
+let url = config.url;
 
 // 网页图片选择器
-let cl = '.post img';
+let cl = config.selector;
 
 // 图片计数
 let count = 0;
 
 // 创建目录
-let dir = './download/';
+let dir = config.dir;
 mkdirp(dir, (err) => {
-    if(err){
+    if (err) {
         console.log(err);
     }
 });
@@ -31,7 +32,7 @@ let getImgs = (html) => {
     let $ = cheerio.load(html);
 
     // 限制并发数量
-    // async.mapLimit($(cl), 5, (item) => {
+    // async.mapLimit($(cl), 10, (item) => {
     //     console.log(item.attribs.src)
     //     download(item)
     // })
@@ -45,22 +46,42 @@ let download = (img) => {
     let src = img.attribs.src;
     let d = (new Date).getTime();
     let name = d + src.match(/.(jpg|png)/)[0];
-
     console.log('img: ' + count);
-    request(src).pipe(fs.createWriteStream('' + dir + count++ + name));
+
+    // let operation = retry.operation({
+    //     retries: 5,
+    //     factor: 3,
+    //     minTimeout: 1 * 1000,
+    //     maxTimeout: 60 * 1000,
+    //     randomize: true,
+    // });
+
+
+    // 请求失败重试
+    // operation.attempt(function() {
+        request
+            .get(src)
+            .on('error', function(err) {
+                // operation.retry(err)
+                console.log(err);
+                // return;
+            })
+            .pipe(fs.createWriteStream('' + dir + count+++name));
+    // });
 }
 
 // 获取页面
 let getHTML = (url) => {
     let promise = new Promise((resolve, reject) => {
-        superagent.get(url)
-          .end((err, res) => {
-            if(!err) {
-                resolve(res.text);
-            } else {
-                reject(err);
-            }
-          })
+        superagent
+            .get(url)
+            .end((err, res) => {
+                if (!err) {
+                    resolve(res.text);
+                } else {
+                    reject(err);
+                }
+            })
     })
 
     return promise;
@@ -68,16 +89,16 @@ let getHTML = (url) => {
 
 
 // 页数
-let pages = 113;
+let pages = config.pages;
 
 // 每次爬的页数限制，避免被封
-let freq = 1;
+let freq = config.freq;
 
 let action = () => {
     let len = pages - freq;
     len = Math.max(0, len);
 
-    if(len === 0) {
+    if (len === 0) {
         clearInterval(timeId);
         console.log('end');
     }
@@ -95,4 +116,4 @@ let timeId = setInterval(() => {
     console.log('page: ' + pages);
     action();
     pages -= freq;
-}, 50 * 1000);
+}, config.delay);
