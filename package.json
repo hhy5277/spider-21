@@ -2,7 +2,7 @@
   "name": "spider",
   "version": "1.0.0",
   "description": "Nodejs 编写的爬虫工具",
-  "main": "index.js",
+  "main": "spider.js",
   "scripts": {
     "test": "node --use_strict spider.js"
   },
