@@ -1,6 +1,7 @@
+'use strict'
+
 let fs = require('fs'),
-  superagent = require('superagent'),
-  cheerio = require('cheerio'),
+  xml2js = require('xml2js'),
   request = require('request'),
   mkdirp = require('mkdirp'),
   async = require('async')
@@ -8,12 +9,8 @@ let fs = require('fs'),
 let config = require('./config').config
 
 
-
 // page url
-let url = config.url
-
-// 网页图片选择器
-let cl = config.selector
+let pageUrl = config.url
 
 // 图片计数
 let count = 0
@@ -26,74 +23,92 @@ mkdirp(dir, (err) => {
   }
 })
 
-// 获取图片
-let getImgs = (html) => {
-  let $ = cheerio.load(html)
+let _getUrl = (cb) => {
+  let url = pageUrl
+          + '/api/read?type=photo&num='
+          + config.freq
+          + '&start='
+          + config.pages
 
-  $(cl).each((index, item) => {
-    download(item)
+  cb(null, url)
+}
+
+let _getPosts = (url, cb) => {
+  request.get(url, (err, res, body) => {
+    xml2js.parseString(body, {
+        explicitArray: false
+    }, (err, result) => {
+      if (!result) return
+      cb(err, result.tumblr.posts.post)
+    })
   })
 }
 
-// 下载图片
-let download = (img) => {
-  let src = img.attribs.src
-  let d = (new Date).getTime()
-  let name = d + src.match(/.(jpg|png)/)[0]
-  console.log('img: ' + count)
+let _getImages = (posts, cb) => {
+  if (posts) {
+    let images = []
+    posts.forEach((post) => {
+      if (post['photoset']) {
+        let photoset = post['photoset']['photo']
+        photoset.forEach((photo) => {
+          images.push(photo['photo-url'][0]._)
+        })
+      }
+      if (post['photo-url']) {
+        images.push(post['photo-url'][0]._)
+      }
+
+    })
+    cb(null, images)
+  } else {
+    console.log('Done, total pages is', config.pages)
+    process.exit()
+  }
+}
+
+let _downImage = (url, cb) => {
+  let name = url.match(/[^/]+$/)[0]
+
+  console.log('download image: ' + count++)
 
   request
-    .get(src)
-    .on('error', function (err) {
-      console.log(err)
+    .get(url)
+    .on('close', () => {
+      cb()
     })
-    .pipe(fs.createWriteStream('' + dir + count++ + name))
+    .on('error', (err) => {
+      console.log('download error', err)
+      cb(err)
+    })
+    .pipe(fs.createWriteStream('' + dir + name))
 }
 
-// 获取页面
-let getHTML = (url) => {
-  let promise = new Promise((resolve, reject) => {
-    superagent
-      .get(url)
-      .end((err, res) => {
-        if (!err) {
-          resolve(res.text)
-        } else {
-          reject(err)
-        }
-      })
+let _downImages = (images, cb) => {
+  const limit = 10
+  async.eachLimit(images, limit, _downImage, (err) => {
+    cb(err)
   })
-
-  return promise
 }
 
-
-// 页数
-let pages = config.pages
-
-// 每次爬的页数限制，避免被封
-let freq = config.freq
-
-let action = () => {
-  let len = pages - freq
-  len = Math.max(0, len)
-
-  if (len === 0) {
-    clearInterval(timeId)
-    console.log('end')
-  }
-
-  for (let i = pages; i > len; i--) {
-    let u = url
-    u = u + i
-    getHTML(u).then(getImgs)
-  }
+let start = () => {
+  async.waterfall([
+    _getUrl,
+    _getPosts,
+    _getImages,
+    _downImages
+  ], (err, result) => {
+    console.log(err, result)
+    if (err) {
+      // 出错重新下载
+      start()
+    } else {
+      config.pages += config.freq
+      console.log(config.pages)
+      start()
+    }
+  })
 }
 
-console.log('start...')
+console.log('Start download...')
 
-let timeId = setInterval(() => {
-  console.log('page: ' + pages)
-  action()
-  pages -= freq
-}, config.delay)
+start()
