@@ -28,7 +28,7 @@ let _getUrl = (cb) => {
           + '/api/read?type=photo&num='
           + config.freq
           + '&start='
-          + config.pages
+          + config.posts
 
   cb(null, url)
 }
@@ -38,8 +38,11 @@ let _getPosts = (url, cb) => {
     xml2js.parseString(body, {
         explicitArray: false
     }, (err, result) => {
-      if (!result) return
-      cb(err, result.tumblr.posts.post)
+      if(err) {
+        cb(err)
+      } else {
+        cb(null, result.tumblr.posts.post)
+      }
     })
   })
 }
@@ -48,43 +51,43 @@ let _getImages = (posts, cb) => {
   if (posts) {
     let images = []
     posts.forEach((post) => {
-      if (post['photoset']) {
+
+      if (post['photo-url']) {
+        images.push(post['photo-url'][0]._)
+      } else if (post['photoset']) {
         let photoset = post['photoset']['photo']
         photoset.forEach((photo) => {
           images.push(photo['photo-url'][0]._)
         })
       }
-      if (post['photo-url']) {
-        images.push(post['photo-url'][0]._)
-      }
 
     })
     cb(null, images)
   } else {
-    console.log('Done, total pages is', config.pages)
+    console.log('Done, total posts is', config.posts)
     process.exit()
   }
 }
 
 let _downImage = (url, cb) => {
-  let name = url.match(/[^/]+$/)[0]
+  let name = count++ + '_' + url.match(/[^/]+$/)[0]
 
-  console.log('download image: ' + count++)
+  console.log('download image: ' + count)
 
   request
     .get(url)
+    .pipe(fs.createWriteStream('' + dir + name))
     .on('close', () => {
       cb()
     })
     .on('error', (err) => {
-      console.log('download error', err)
+      console.log('write error', err)
       cb(err)
     })
-    .pipe(fs.createWriteStream('' + dir + name))
 }
 
 let _downImages = (images, cb) => {
-  const limit = 10
+  const limit = 6
   async.eachLimit(images, limit, _downImage, (err) => {
     cb(err)
   })
@@ -97,13 +100,12 @@ let start = () => {
     _getImages,
     _downImages
   ], (err, result) => {
-    console.log(err, result)
     if (err) {
-      // 出错重新下载
+      console.log('出错重新下载...')
+      count = 0
       start()
     } else {
-      config.pages += config.freq
-      console.log(config.pages)
+      config.posts += config.freq
       start()
     }
   })
