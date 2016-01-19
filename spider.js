@@ -17,6 +17,7 @@ let count = 0
 
 // 创建目录
 let dir = config.dir
+
 mkdirp(dir, (err) => {
   if (err) {
     console.log(err)
@@ -51,32 +52,45 @@ let _getImages = (posts, cb) => {
   if (posts) {
     let images = []
     posts.forEach((post) => {
-
+      let date = post['$']['date']
       if (post['photo-url']) {
-        images.push(post['photo-url'][0]._)
+        images.push({ src: post['photo-url'][0]._, date: date })
       } else if (post['photoset']) {
         let photoset = post['photoset']['photo']
         photoset.forEach((photo) => {
-          images.push(photo['photo-url'][0]._)
+          images.push({ src: photo['photo-url'][0]._, date: date })
         })
       }
 
     })
     cb(null, images)
   } else {
-    console.log('Done, total posts is', config.posts)
+    console.log('Done, total images count', count)
     process.exit()
   }
 }
 
-let _downImage = (url, cb) => {
-  let name = count++ + '_' + url.match(/[^/]+$/)[0]
+let _downImage = (image, cb) => {
+  let url = image.src
+  let d = new Date(image.date || null)
+  let ds = d.toLocaleDateString().replace(/\//g, '_')
+
+  let name = count++ + '_' + ds + '_' + url.match(/[^/]+$/)[0]
+  let fileName = dir + name
+
+
+  // 存在就跳过
+  if(fs.existsSync(fileName)) {
+    console.log('Has downloaded: ' + name)
+    cb()
+    return;
+  }
 
   console.log('download image: ' + count)
 
   request
     .get(url)
-    .pipe(fs.createWriteStream('' + dir + name))
+    .pipe(fs.createWriteStream(fileName))
     .on('close', () => {
       cb()
     })
@@ -102,7 +116,7 @@ let start = () => {
   ], (err, result) => {
     if (err) {
       console.log('出错重新下载...')
-      count = 0
+      config.posts = count = 0
       start()
     } else {
       config.posts += config.freq
